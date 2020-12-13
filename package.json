@@ -1,0 +1,32 @@
+{
+  "name": "@twodashes/node",
+  "version": "0.4.0",
+  "description": "Node platform-specific utility functions like HTTP requests, CLI arguments, promises, operating system, version, etc. See also @twodashes/universal and @twodashes/browser",
+  "private": false,
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "build": "npm run cjs_dir && npm run cjs_index",
+    "cjs_dir": "rm -rf cjs && rollup esm/*.js --format cjs --dir cjs/ --exports auto",
+    "cjs_index": "rm -rf index.cjs && rollup index.mjs --format cjs --file index.cjs --exports auto"
+  },
+  "targets": {
+    "app": {
+      "engines": {
+        "browsers": "> 0.75%"
+      }
+    }
+  },
+  "module": "index.mjs",
+  "main": "index.cjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/twodashes/node.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/twodashes/node/issues"
+  },
+  "homepage": "https://github.com/twodashes/node#readme"
+}
