@@ -1,49 +1,4 @@
 import http from 'http';
-import './string.js';
-import { querystring_from_object } from './urls.js';
-
-/**
- * Parse Axios error message
- * @param {string} source - external URL to load
- * @param {object} beforeEl - DOM element before which to insert the new <script> tag
- * @param {object} scriptAttrs - object of attributes to add to the new <script> tag
- */
-function load_script(source, beforeEl, scriptAttrs = {}) {
-  if (!source) return false;
-  if (typeof window !== "object" || typeof document !== "object") return false;
-  return new Promise((resolve, reject) => {
-    let script = document.createElement("script");
-
-    // force certain attributes
-    script.async = true;
-    script.defer = true;
-    for (let key in scriptAttrs) {
-      script[key] = scriptAttrs[key];
-    }
-
-    // NOTE: needs refactor: maybe .bind(script)
-    function onloadHander(_, isAbort) {
-      if (isAbort || !script.readyState || /loaded|complete/.test(script.readyState)) {
-        script.onload = null;
-        script.onreadystatechange = null;
-        script = undefined;
-
-        if (isAbort) {
-          reject();
-        } else {
-          resolve();
-        }
-      }
-    }
-
-    script.onload = onloadHander;
-    script.onreadystatechange = onloadHander;
-
-    script.src = source;
-    window.document.body.append(script);
-    resolve(true);
-  });
-}
 
 /**
  * Parse simple message string from HTTP JSON response, GraphQL, or Error() object
@@ -110,7 +65,7 @@ function http_get(url = ``, data = {}, options = {}) {
     headers: {},
     ...options
   };
-  return fetch(url + querystring_from_object(data), {
+  return fetch(url, {
     method: options.method, // *GET, POST, PUT, DELETE, etc.
     mode: options.cors, // no-cors, cors, *same-origin
     cache: options.cache, // no-cache, reload, force-cache, only-if-cached
@@ -185,31 +140,6 @@ function http_put(url = ``, data = {}) {
 function http_ajax(url, method = "GET", data = undefined, headers = {}, options = {}) {
   data = data || undefined;
   headers = { "Content-Type": "application/json", ...headers };
-  /*
-   * for front-end:
-   */
-  if (typeof fetch === "function") {
-    options = {
-      method: method,
-      mode: "cors",
-      cache: "no-cache",
-      credentials: "same-origin",
-      redirect: "follow",
-      referrer: "no-referrer",
-      headers,
-      ...options
-    };
-    // time saving feature = build GET url params from JS object, passed like POST data
-    if (method === "GET" && data && typeof querystring_from_object === "function") {
-      url = url + querystring_from_object(data);
-    }
-    return fetch(url, options)
-      .then((response) => response.json()) // parses response to JSON
-      .then((response) => response.data);
-  }
-  /*
-   * for back-end:
-   */
   if (typeof http === "object") {
     return new Promise(function (resolve) {
       const params = {
@@ -242,27 +172,7 @@ function http_ajax(url, method = "GET", data = undefined, headers = {}, options 
         });
     });
   }
-  /*
-   * error:
-   */
-  if (typeof window === "object") {
-    throw new Error("Sorry. Your browser does not support this feature.");
-  } else {
-    throw new Error('Error: please import/require "http" Node module before calling http_ajax');
-  }
 }
 
-/*
- * EXPORT FOR BROWSER
- */
-if (typeof window === "object") {
-  const browser = { http_ajax, http_get, http_post, http_put, load_script, parse_error_message };
-  // set up for export
-  window.__ = window.__ || {};
-  // flatten
-  for (let func in browser) {
-    window.__[func] = browser[func];
-  }
-}
 /* EXPORT FOR NODE */
-export { http_ajax, http_get, http_post, http_put, load_script, parse_error_message };
+export { http_ajax, http_get, http_post, http_put, parse_error_message };
