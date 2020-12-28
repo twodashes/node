@@ -1,14 +1,22 @@
 {
   "name": "@twodashes/node",
-  "version": "0.4.1",
+  "version": "0.4.5",
   "description": "Utility functions specifically for Node.js. HTTP requests, CLI arguments, promises, operating system, version, etc. See also @twodashes/universal and @twodashes/browser",
   "private": false,
   "dependencies": {},
   "devDependencies": {},
+  "scripts_docs": [
+    ["1. **cut_index** - Copy ./esm/index.js to ./index.mjs (so it does not get converted in next step)"],
+    ["2. **cjs** - Convert ./esm to ./cjs"],
+    ["3. **put_index** - Copy ./index.mjs back to ./esm/index.js"],
+    ["4. **cjs_index** - Convert ./esm/index.js to ./cjs/index.js (so it can get processed without reference to other files)"]
+  ],
   "scripts": {
-    "build": "npm run cjs_dir && npm run cjs_index",
-    "cjs_dir": "rm -rf cjs && rollup esm/*.js --format cjs --dir cjs/ --exports auto",
-    "cjs_index": "rm -rf index.cjs && rollup index.mjs --format cjs --file index.cjs --exports auto"
+    "build": "npm run cut_index && npm run cjs && npm run put_index && npm run cjs_index",
+    "cjs": "rm -rf cjs && rollup esm/*.js --format cjs --dir cjs/ --exports auto",
+    "cut_index": "mv esm/index.js index.js",
+    "put_index": "mv index.js esm/index.js",
+    "cjs_index": "rollup esm/index.js --format cjs --file cjs/index.js --exports auto"
   },
   "targets": {
     "app": {

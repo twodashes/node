@@ -55,14 +55,13 @@ function parse_error_message(response) {
 /**
  * GET request
  * @param {string} url - including protocol, not including query params
- * @param {object} data - url query params as a JS object
  * @param {object} options - override defaults:
  *    ```
  *    {mode:"cors", cache: "no-cache", redirect: "follow", referrer: "no-referrer", headers: {}}
  *    ```
  * @returns {Promise} - promise will resolve with response data
  */
-function http_get(url = ``, data = {}, options = {}) {
+function http_get(url = ``, options = {}) {
   options = {
     method: "GET",
     mode: "cors",
@@ -181,6 +180,10 @@ function http_ajax(url, method = "GET", data = undefined, headers = {}, options 
     });
   }
 }
+
+/*
+ * PRIVATE FUNCTIONS
+ */
 
 exports.http_ajax = http_ajax;
 exports.http_get = http_get;
