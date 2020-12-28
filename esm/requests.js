@@ -1,182 +1,139 @@
-import http from 'http';
-
-/**
- * Parse simple message string from HTTP JSON response, GraphQL, or Error() object
- *    Too many libraries to fetch HTTP requests, too many non-standard response formats.
- *    This handles Axios or standard XMLHTTPRequest, or an Error() object
- *    Supports either convention, of Twitter or Facebook
- *    Supports "non-legacy" format described in: https://www.mediawiki.org/wiki/API:Errors_and_warnings
- *    Response and parsed error can be any type. This will figure it out, with just a few if/else rules.
- *      NOTE:
- *      Unless you don't care about performance, this should NOT be used to detect if a variable is an error,
- *      only to parse the message string from some object/response which you know contains an error message.
- * @param {object} response - response from HTTP request or Error object
- * @returns {string} - nice readable text, meant for an alert popup in your front-end user interface
- */
-function parse_error_message(response) {
-  if (!response) return "!error";
-  //
-  // maybe input was a string, which is already an error message,
-  // or null/undefined/false, whatever, just output that as is
-  if (typeof response !== "object") return response.toString();
-  //
-  // content from HTTP response:
-  let content = response.response
-    ? response.response.data
-      ? response.response.data
-      : response.response
-    : response.data || response;
-  //
-  // error object:
-  let error = content;
-  if (content.errors) error = content.errors[0] || content.errors;
-  else if (content.warnings) error = content.warnings[0] || content.warnings;
-  else if (content.error) error = content.error;
-  else if (content.warning) error = content.warning;
-  //
-  // something weird:
-  if (typeof error !== "object") return error.toString();
-  //
-  // JS Error object - cut off extra stuff about files/lines:
-  if (error[0] && error[0].length > 3) return error[0];
-  //
-  // JSON object:
-  return error.message || error.toString();
-}
+import { promises as fsPromises } from "fs";
+import fetch from "node-fetch";
 
 /**
  * GET request
  * @param {string} url - including protocol, not including query params
  * @param {object} options - override defaults:
+ * @param {string|boolean} options.cache - see browser fetch documentation - additionally:
+ *    true - use cached data - expires when the server is restarted
+ *    false - do not cache - prevent fetch/http/browser/node from caching
  *    ```
  *    {mode:"cors", cache: "no-cache", redirect: "follow", referrer: "no-referrer", headers: {}}
  *    ```
+ * @param {string} options.method - will be overridden to "GET"
  * @returns {Promise} - promise will resolve with response data
  */
-function http_get(url = ``, options = {}) {
-  options = {
-    method: "GET",
+async function http_get(url = ``, options = {}) {
+  options.method = "GET"
+  return http_ajax(url, options);
+}
+
+/**
+ * POST request
+ * @param {string} url
+ * @param {*} data
+ * @returns {Promise}
+ */
+function http_post(url = ``, data = {}) {
+  return http_ajax(url, {method:"POST",body:data});
+}
+
+/**
+ * PUT request
+ * @param {string} url
+ * @param {*} data
+ * @returns {Promise}
+ */
+function http_put(url = ``, data = {}) {
+  return http_ajax(url, {method:"PUT",body:data});
+}
+
+/**
+ * DELETE request
+ * @param {string} url
+ * @param {*} data
+ * @returns {Promise}
+ */
+function http_delete(url = ``, data = {}) {
+  return http_ajax(url, {method:"DELETE",body:data});
+}
+
+/* EXPORT FOR NODE */
+export { http_get, http_post, http_put, http_delete };
+
+/*
+ * PRIVATE LIB
+ */
+function querystring_from_object(params = {}) {
+  let qs = Object.keys(params)
+    .map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
+    .join("&");
+  if (qs) {
+    qs = "?" + qs;
+  }
+  return qs;
+}
+async function http_ajax(url = ``, options = {}) {
+  if (typeof fetch !== "function") {
+    console.log("fetch is not a function :(");
+    return;
+  }
+  /*
+   * First try to get it from cache
+   */
+  let method = options.method ? options.method.toUpperCase() : "GET";
+  if (method === "GET" || options.cache === true) {
+    try {
+      let cachedData = await fsPromises.readFile(`/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
+      if (cachedData) {
+        cachedData = cachedData.toString();
+      }
+      if (cachedData && cachedData.length > 10) {
+        let data = JSON.parse(cachedData);
+        if (data) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.log("not cached", `/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
+    }
+  }
+  /*
+   * fetch the url
+   */
+  if (method !== "GET") {
+    if (!options.body) {
+      options.body = "";
+    } else if (typeof options.body !== "string") {
+      options.body = JSON.stringify(options.body); // body data type must match "Content-Type" header
+    }
+  }
+  let params = {
+    method: method,
     mode: "cors",
-    cache: "no-cache",
+    cache: options.cache === false ? "no-cache" : typeof options.cache === "string" ? options.cache : "default",
     credentials: "same-origin",
     redirect: "follow",
     referrer: "no-referrer",
     headers: {},
     ...options
   };
-  return fetch(url, {
-    method: options.method, // *GET, POST, PUT, DELETE, etc.
-    mode: options.cors, // no-cors, cors, *same-origin
-    cache: options.cache, // no-cache, reload, force-cache, only-if-cached
-    credentials: options.credentials, // include, *same-origin, omit
-    headers: options.headers, // {}, {"Content-Type": "application/json; charset=utf-8"}
-    redirect: options.redirect, // manual, *follow, error
-    referrer: options.referrer // no-referrer, *client
-  })
-    .then((response) => response.json()) // parses response to JSON
-    .then((response) => response.data);
-}
-
-/**
- * POST request
- * @param {string} url
- * @param {object} data
- * @returns {Promise}
- */
-function http_post(url = ``, data = {}) {
-  // Auth
-  // url = url;
-  // Default options are marked with *
-  return fetch(url, {
-    method: "POST", // *GET, POST, PUT, DELETE, etc.
-    mode: "cors", // no-cors, cors, *same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: "same-origin", // include, *same-origin, omit
-    headers: {
-      "Content-Type": "application/json; charset=utf-8"
-      // "Content-Type": "application/x-www-form-urlencoded",
-    },
-    redirect: "follow", // manual, *follow, error
-    referrer: "no-referrer", // no-referrer, *client
-    body: JSON.stringify(data) // body data type must match "Content-Type" header
-  }).then((response) => response.json()); // parses response to JSON
-}
-
-/**
- * PUT request
- * @param {string} url
- * @param {object} data
- * @returns {Promise}
- */
-function http_put(url = ``, data = {}) {
-  // Auth
-  // url = url;
-  // Default options are marked with *
-  return fetch(url, {
-    method: "PUT", // *GET, POST, PUT, DELETE, etc.
-    mode: "cors", // no-cors, cors, *same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: "same-origin", // include, *same-origin, omit
-    headers: {
-      "Content-Type": "application/json; charset=utf-8"
-      // "Content-Type": "application/x-www-form-urlencoded",
-    },
-    redirect: "follow", // manual, *follow, error
-    referrer: "no-referrer", // no-referrer, *client
-    body: JSON.stringify(data) // body data type must match "Content-Type" header
-  }).then((response) => response.json()); // parses response to JSON
-}
-
-/**
- * Universal AJAX request coming soon...
- * @param url
- * @param method
- * @param data
- * @param headers
- * @param options
- * @returns {Promise}
- */
-function http_ajax(url, method = "GET", data = undefined, headers = {}, options = {}) {
-  data = data || undefined;
-  headers = { "Content-Type": "application/json", ...headers };
-  if (typeof http === "object") {
-    return new Promise(function (resolve) {
-      const params = {
-        method,
-        headers
-      };
-      http
-        .request(url, params, (res) => {
-          let data = '';
-          res.on("data", (chunk) => {
-            data += chunk;
-          });
-          res.on("end", () => {
-            // response data
-            // format by type
-            if (
-              data &&
-              typeof data === "string" &&
-              headers["Content-Type"] === "application/json; charset=utf-8"
-            ) {
-              data = JSON.parse(data);
-            }
-            // return
-            resolve(data);
-          });
-          // error?
-        })
-        .on("error", (err) => {
-          console.log("Error: ", err.message);
-        });
-    });
+  let res = await fetch(url, {
+    method: params.method, // *GET, POST, PUT, DELETE, etc.
+    mode: params.cors, // no-cors, cors, *same-origin
+    cache: params.cache, // no-cache, reload, force-cache, only-if-cached
+    credentials: params.credentials, // include, *same-origin, omit
+    headers: params.headers, // {}, {"Content-Type": "application/json; charset=utf-8"}
+    redirect: params.redirect, // manual, *follow, error
+    referrer: params.referrer // no-referrer, *client
+  });
+  let data;
+  if (typeof res.json === "function") {
+    data = await res.json();
+  } else {
+    data = res;
   }
+  let output = data.data || data;
+  /*
+   * Save to cache
+   */
+  if (params.method === "GET" && output && options.cache === true) {
+    try {
+      await fsPromises.writeFile(`/tmp/${url.replace(/[^\w\d]+/g, "")}.json`, JSON.stringify(output));
+    } catch (e) {
+      console.log("could not write", `/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
+    }
+  }
+  return output;
 }
-
-/* EXPORT FOR NODE */
-export { http_ajax, http_get, http_post, http_put, parse_error_message };
-
-/*
- * PRIVATE FUNCTIONS
- */
-
