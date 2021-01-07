@@ -86,7 +86,7 @@ async function http_ajax(url = ``, options = {}) {
         }
       }
     } catch (e) {
-      console.log("not cached", `/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
+      // console.log("not cached", `/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
     }
   }
   /*
@@ -132,7 +132,7 @@ async function http_ajax(url = ``, options = {}) {
     try {
       await fsPromises.writeFile(`/tmp/${url.replace(/[^\w\d]+/g, "")}.json`, JSON.stringify(output));
     } catch (e) {
-      console.log("could not write", `/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
+      // console.log("could not write", `/tmp/${url.replace(/[^\w\d]+/g, "")}.json`);
     }
   }
   return output;
