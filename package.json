@@ -1,6 +1,6 @@
 {
   "name": "@twodashes/node",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "Utility functions specifically for Node.js. HTTP requests, CLI arguments, promises, operating system, version, etc. See also @twodashes/universal and @twodashes/browser",
   "private": false,
   "dependencies": {},

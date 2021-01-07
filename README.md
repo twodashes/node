@@ -1,6 +1,6 @@
 # Utility functions **for Node.js**
 
-See also: [@twodash/universal](#) and [@twodash/browser](#), which are structured the same way, but are less pure and more platform-specific. Planned for the future are more platform-specific functions: "@twodash/rnative" for React Native, "@twodash/ionic", and in a galaxy far far away "@twodash/quasar".
+See also [@twodash/universal](#) for all platforms, and [@twodash/browser](#) for the browser (including Webpack). Planned for the future are more platform-specific functions: "@twodash/rnative" for React Native, "@twodash/ionic", and in a galaxy far far away "@twodash/quasar".
 
 # Installation
 
